@@ -15,32 +15,54 @@ STARTUP(WiFi.selectAntenna(ANT_AUTO)); // continually switches at high speed bet
 
 SerialLogHandler logHandler(LOG_LEVEL_ALL);
 
-// Prototypes for local build, ok to leave in for Build IDE
-void rainbow(uint8_t wait);
-uint32_t Wheel(byte WheelPos);
+int red, green, blue;
+int lastRed, lastGreen, lastBlue;
 
-int setColor(String command)
+int setColor(String command) // dim to off and then dim to new color
 {
-        Serial.println(command);
+        lastRed = red;
+        lastGreen = green;
+        lastBlue = blue;
+
+        int fadeRed, fadeGreen, fadeBlue;
 
         String redString = command.substring(0,3);
-        Serial.println(redString);
-        int red = redString.toInt();
+        red = redString.toInt();
 
         String greenString = command.substring(4,7);
-        Serial.println(greenString);
-        int green = greenString.toInt();
+        green = greenString.toInt();
 
         String blueString = command.substring(8,11);
-        Serial.println(blueString);
-        int blue = blueString.toInt();
+        blue = blueString.toInt();
 
-        for (int i=0; i<strip.numPixels(); i++)
+        for (int i = 0; i <=  max(max(lastRed,lastGreen),lastBlue); i++)
         {
-                strip.setPixelColor(i, strip.Color(red,green,blue));
-        }
-        strip.show();
+                fadeRed = constrain(lastRed - i, 0, 255);
+                fadeGreen = constrain(lastGreen - i, 0, 255);
+                fadeBlue = constrain(lastBlue - i, 0, 255);
 
+                for (int i=0; i<strip.numPixels(); i++)
+                {
+                        strip.setPixelColor(i, fadeRed, fadeGreen, fadeBlue);
+                }
+                strip.show();
+                delay(5);
+        }
+
+        for (int i = max(max(red,green),blue); i>=0; i--)
+        {
+
+                fadeRed = constrain(red - i, 0, red);
+                fadeGreen = constrain(green - i, 0, green);
+                fadeBlue = constrain(blue - i, 0, blue);
+
+                for (int i=0; i<strip.numPixels(); i++) // fade in
+                {
+                        strip.setPixelColor(i, fadeRed, fadeGreen, fadeBlue);
+                }
+                strip.show();
+                delay(5);
+        }
         return 0;
 }
 
@@ -58,89 +80,6 @@ void setup() // Put setup code here to run once
         Particle.connect();
 }
 
-
-void breathe()
-{
-        for (int j=0; j<=100; j++)
-        {
-                for (int i=0; i<strip.numPixels(); i++)
-                {
-                        strip.setPixelColor(i, strip.Color(j,j,j));
-                }
-                strip.show();
-                delay(10);
-        }
-        delay(200);
-
-        for (int j=100; j>=0; j--)
-        {
-                for (int i=0; i<strip.numPixels(); i++)
-                {
-                        strip.setPixelColor(i, strip.Color(j,j,j));
-                }
-                strip.show();
-                delay(10);
-        }
-        delay(200);
-}
-
-void strobe()
-{
-        for (int i=0; i<strip.numPixels(); i++)
-        {
-                strip.setPixelColor(i, strip.Color(0,0,0));
-        }
-        strip.show();
-
-        delay(20);
-
-        for (int i=0; i<strip.numPixels(); i++)
-        {
-                strip.setPixelColor(i, strip.Color(100,100,100));
-        }
-        strip.show();
-
-        delay(20);
-}
-
-void circle()
-{
-
-for (int k=0; k<256; k++)
-{
-
-  for (int i=0; i<strip.numPixels(); i++)
-  {
-          strip.setPixelColor(i, Wheel((i+k) & 255));
-
-          if (i == 14)
-          {
-            strip.setPixelColor(i+1, Wheel((i+k) & 255));
-            strip.setPixelColor(0, Wheel((i+k) & 255));
-          }
-          else if (i == 15)
-          {
-            strip.setPixelColor(0, Wheel((i+k) & 255));
-            strip.setPixelColor(1, Wheel((i+k) & 255));
-          }
-          else
-          {
-            strip.setPixelColor(i+1, Wheel((i+k) & 255));
-            strip.setPixelColor(i+2, Wheel((i+k) & 255));
-          }
-
-          if (i == 0){
-            strip.setPixelColor(strip.numPixels()-1, strip.Color(0,0,0));}
-          else {
-            strip.setPixelColor(i-1, strip.Color(0,0,0));}
-
-          strip.show();
-          delay(45);
-  }
-
-}
-}
-
 void loop() // Put code here to loop forever
 {
         // strobe();
@@ -148,31 +87,4 @@ void loop() // Put code here to loop forever
         // breathe();
 
         // circle();
-}
-
-
-void rainbow(uint8_t wait) {
-        uint16_t i, j;
-
-        for(j=0; j<256; j++) {
-                for(i=0; i<strip.numPixels(); i++) {
-                        strip.setPixelColor(i, Wheel((i+j) & 255));
-                }
-                strip.show();
-                delay(wait);
-        }
-}
-
-// Input a value 0 to 255 to get a color value.
-// The colours are a transition r - g - b - back to r.
-uint32_t Wheel(byte WheelPos) {
-        if(WheelPos < 85) {
-                return strip.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
-        } else if(WheelPos < 170) {
-                WheelPos -= 85;
-                return strip.Color(255 - WheelPos * 3, 0, WheelPos * 3);
-        } else {
-                WheelPos -= 170;
-                return strip.Color(0, WheelPos * 3, 255 - WheelPos * 3);
-        }
 }
