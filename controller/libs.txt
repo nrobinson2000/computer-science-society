@@ -1,1 +1,2 @@
 https://github.com/technobly/Particle-NeoPixel neopixel
+ Adafruit_DHT
