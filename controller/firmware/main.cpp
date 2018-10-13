@@ -11,7 +11,7 @@ SYSTEM_THREAD(ENABLED);
 
 char message[256];
 
-Adafruit_NeoPixel strip(PIXEL_COUNT, PIXEL_PIN, PIXEL_TYPE);
+Adafruit_NeoPixel ring(PIXEL_COUNT, PIXEL_PIN, PIXEL_TYPE);
 
 STARTUP(WiFi.selectAntenna(ANT_AUTO)); // continually switches at high speed between antennas
 
@@ -49,78 +49,69 @@ void getReadings()
 
         snprintf(message, sizeof(message), "{\"t\":\"%.2f\",\"h\":\"%.2f\",\"b\":\"%d\"}", temperature, humidity, brightness);
         Particle.publish("room_status", message, PRIVATE);
-
 }
 
 int red, green, blue;
 int lastRed, lastGreen, lastBlue;
 
-int setColor(String command) // dim to off and then dim to new color
+int setColor(const char* args) // dim to off and then dim to new color
 {
+        int fadeRed, fadeGreen, fadeBlue;
+
         lastRed = red;
         lastGreen = green;
         lastBlue = blue;
 
-        int fadeRed, fadeGreen, fadeBlue;
+        // parse arguments to get red,green,blue
+        if (sscanf(args, "%d,%d,%d", &red, &green, &blue) < 3) {
+                return -1; // bail if not all 3 colors are provided
+        }
 
-        String redString = command.substring(0,3);
-        red = redString.toInt();
-
-        String greenString = command.substring(4,7);
-        green = greenString.toInt();
-
-        String blueString = command.substring(8,11);
-        blue = blueString.toInt();
-
-        for (int i = 0; i <=  max(max(lastRed,lastGreen),lastBlue); i++)
+        for (int i = 0; i <= max(max(lastRed,lastGreen),lastBlue); i++) // fade out
         {
                 fadeRed = constrain(lastRed - i, 0, 255);
                 fadeGreen = constrain(lastGreen - i, 0, 255);
                 fadeBlue = constrain(lastBlue - i, 0, 255);
 
-                for (int i=0; i<strip.numPixels(); i++)
+                for (int i=0; i<ring.numPixels(); i++)
                 {
-                        strip.setPixelColor(i, fadeRed, fadeGreen, fadeBlue);
+                        ring.setPixelColor(i, fadeRed, fadeGreen, fadeBlue);
                 }
-                strip.show();
+                ring.show();
                 delay(5);
         }
 
-        for (int i = max(max(red,green),blue); i>=0; i--)
+        for (int i = max(max(red,green),blue); i>=0; i--) // fade in
         {
-
                 fadeRed = constrain(red - i, 0, red);
                 fadeGreen = constrain(green - i, 0, green);
                 fadeBlue = constrain(blue - i, 0, blue);
 
-                for (int i=0; i<strip.numPixels(); i++) // fade in
+                for (int i=0; i<ring.numPixels(); i++)
                 {
-                        strip.setPixelColor(i, fadeRed, fadeGreen, fadeBlue);
+                        ring.setPixelColor(i, fadeRed, fadeGreen, fadeBlue);
                 }
-                strip.show();
+                ring.show();
                 delay(5);
         }
-        return 0;
+        return red*1000000 + green*1000 + blue;
 }
 
-int lockFunction(String args)
+int lockFunction(const char* args)
 {
-        int lockOption = args.toInt();
+        int lockOption = atoi(args);
         lock.write(lockOption);
         return lockOption;
 }
 
 void setup() // Put setup code here to run once
 {
-        strip.begin();
-        strip.show(); // Initialize all pixels to 'off'
+        ring.begin();
+        ring.show(); // Initialize all pixels to 'off'
         dht.begin();
-
         lock.attach(D2);
-
         Serial.begin(115200);
 
-        pinMode(D7, OUTPUT);
         pinMode(A5, OUTPUT);
         pinMode(A0, INPUT);
 
@@ -134,11 +125,9 @@ void setup() // Put setup code here to run once
 
 void loop() // Put code here to loop forever
 {
-
         if (Particle.connected())
         {
                 getReadings();
         }
-
         softDelay(5000);
 }
